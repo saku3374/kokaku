@@ -1,10 +1,480 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>test</title></head>
-<body style="background:black;color:white;">
-<p id="x">loading</p>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>攻殻機動隊 実戦メモ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#07070f;color:#dde;font-family:'Courier New',monospace;padding-bottom:80px;}
+button,input,textarea{font-family:'Courier New',monospace;-webkit-appearance:none;outline:none;}
+.card{background:#0e0e1a;border:1px solid #222235;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.sec{font-size:9px;color:#00ff99;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;font-weight:700;display:block;}
+.row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;}
+.hdr{background:#0e0e1a;border-bottom:1px solid #00ff9922;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+</style>
+</head>
+<body>
+<div id="root"></div>
 <script>
-document.getElementById("x").textContent = "動いた";
+var SK="kokaku_v13";
+var KZ=[50,100,150,200,250,300,350,400,450,550];
+var ZCOLS=["[緑]","[黄]","[赤]","[青]","[紫]","[虹]","[金]"];
+var SCOLS=["[緑]","[赤]","[青]","[紫]","[虹]","[金]"];
+var CZLV=["[青]","[緑]","[赤]","[虹]"];
+var RARE=["なし","チェリー","スイカ","強役"];
+var TACHI=[{k:"白",h:"平均35pt"},{k:"青",h:"平均50pt"},{k:"緑",h:"50pt以上 平均85pt"},{k:"赤",h:"100pt以上 平均130pt"}];
+var MI={A:{c:"#6c757d",d:"天井550G",ceil:550},B:{c:"#0d6efd",d:"天井450G",ceil:450},C:{c:"#fd7e14",d:"天井250G*",ceil:250},D:{c:"#dc3545",d:"天井150G**",ceil:150}};
+var ZT={50:{A:"25%",B:"50%",C:"25%",D:"100%"},100:{A:"50%",B:"1%",C:"50%",D:"1%"},150:{A:"1%",B:"50%",C:"1%",D:"天井"},200:{A:"家出",B:"家出",C:"家出",D:"-"},250:{A:"50%",B:"25%",C:"天井",D:"-"},300:{A:"-",B:"1%",C:"-",D:"-"},350:{A:"25%",B:"50%",C:"-",D:"-"},400:{A:"家出",B:"家出",C:"-",D:"-"},450:{A:"50%",B:"天井",C:"-",D:"-"},550:{A:"天井",B:"-",C:"-",D:"-"}};
+var ICHI=[{k:"素子",h:"デフォルト",c:"#555"},{k:"戦闘中素子",h:"高設定示唆(弱)",c:"#198754"},{k:"トグサ",h:"奇数設定示唆",c:"#4da8ff"},{k:"バトー",h:"偶数設定示唆",c:"#4da8ff"},{k:"ポーカー",h:"高モード示唆",c:"#0dcaf0"},{k:"素子後ろ姿",h:"モードB以上濃厚",c:"#ffc107"},{k:"公安9課",h:"モードC以上濃厚",c:"#fd7e14"},{k:"電脳素子",h:"モードC以上+D期待",c:"#a855f7"},{k:"アオイ",h:"モードD+設定4以上",c:"#fbbf24"},{k:"2ndGIG",h:"白の境界 権利保有",c:"#22d3ee"}];
+var FRAMES=[{k:"なし",c:"#444"},{k:"赤枠",c:"#dc3545"},{k:"紫枠",c:"#a855f7"},{k:"金枠",c:"#ffc107"}];
+var TROPH=[{k:"なし",l:"なし",c:"#444"},{k:"銅",l:"銅(設定2以上)",c:"#cd7f32"},{k:"銀",l:"銀(設定3以上)",c:"#adb5bd"},{k:"金",l:"金(設定4以上)",c:"#ffc107"},{k:"キリン",l:"キリン(設定5以上)",c:"#fd7e14"},{k:"虹",l:"虹(設定6確定)",c:"#0dcaf0"}];
+var SAM=[{k:"①",h:"デフォルト"},{k:"②",h:"復活期待50%"},{k:"③",h:"調査中"},{k:"④",h:"偶数アップ"},{k:"⑤",h:"高設定弱"},{k:"⑥",h:"高設定強"},{k:"⑦",h:"調査中"},{k:"⑧",h:"設定2以上"},{k:"⑨",h:"設定4以上"},{k:"⑩",h:"設定6濃厚"}];
+var TBL=["①","②","③","④","⑤","⑥","⑦"];
+var CYC=["①","②","③","④","⑤","⑥","⑦","⑧"];
+var GRN="#00ff99",BG="#07070f",MUT="#556";
+var _id=0;
+function uid(){return ++_id+"_"+Date.now();}
+function newAT(n){return{n:n,cycles:[newCyc()],mai:null,bmai:null,ichi:null,frame:"なし",sam:null,trophy:"なし",tachi:null,hakky:null,note:""};}
+function newCyc(){var k={};KZ.forEach(function(g){k[g]={col:null,hat:null};});return{id:uid(),naibu:"通常",conf:[],deny:[],tachi:null,kirei:k,sen:[],cz:null};}
+function newSen(g,tr){return{id:uid(),g:g,tr:tr,tbl:null,col:null,ok:null,memo:""};}
+function newCZ(g,tp){return{id:uid(),g:g,type:tp,lv:null,rare:"なし",ok:null,fuk:null,sam:null};}
+var S={scr:"home",ats:[],curAT:null,curCyc:0,totalG:"",totalMai:"",senG:null,senTr:"規定G",czG:null,openSec:null,openSen:null};
+function save(){try{localStorage.setItem(SK,JSON.stringify({ats:S.ats,totalG:S.totalG,totalMai:S.totalMai}));}catch(e){}}
+function load(){try{var d=JSON.parse(localStorage.getItem(SK)||"{}");if(Array.isArray(d.ats))S.ats=d.ats;if(d.totalG)S.totalG=d.totalG;if(d.totalMai)S.totalMai=d.totalMai;}catch(e){}}
+function getAT(){return S.curAT!==null?S.ats[S.curAT]:null;}
+function getCyc(){var a=getAT();return a?a.cycles[S.curCyc]:null;}
+function updAT(fn){S.ats[S.curAT]=fn(S.ats[S.curAT]);save();}
+function updCyc(fn){var a=getAT();var cs=a.cycles.slice();cs[S.curCyc]=fn(cs[S.curCyc]);S.ats[S.curAT]=oa(a,{cycles:cs});save();}
+function updSen(si,k,v){updCyc(function(c){var s=c.sen.slice();s[si]=oa(s[si]);s[si][k]=v;return oa(c,{sen:s});});}
+function oa(o,p){return Object.assign({},o,p||{});}
+function find(arr,k,v){for(var i=0;i<arr.length;i++)if(arr[i][k]===v)return arr[i];return null;}
+function modeState(m){var c=getCyc();if(!c)return"off";return c.conf.indexOf(m)>=0?"on":c.deny.indexOf(m)>=0?"deny":"off";}
+function cycleMode(m){
+  updCyc(function(c){
+    if(c.conf.indexOf(m)<0&&c.deny.indexOf(m)<0)return oa(c,{conf:c.conf.concat([m])});
+    if(c.conf.indexOf(m)>=0)return oa(c,{conf:c.conf.filter(function(x){return x!==m;}),deny:c.deny.concat([m])});
+    return oa(c,{deny:c.deny.filter(function(x){return x!==m;})});
+  });
+}
+function d(style,text){var e=document.createElement("div");if(style)e.setAttribute("style",style);if(text!=null)e.textContent=text;return e;}
+function s(style,text){var e=document.createElement("span");if(style)e.setAttribute("style",style);if(text!=null)e.textContent=text;return e;}
+function b(style,text,fn){var e=document.createElement("button");if(style)e.setAttribute("style",style);if(text!=null)e.textContent=text;if(fn)e.addEventListener("click",fn);return e;}
+function ap(p,c){if(!c)return;if(Array.isArray(c)){c.forEach(function(x){if(x)p.appendChild(x);});}else{p.appendChild(c);}return p;}
+function mkBtn(lbl,active,color,fn,sm){
+  return b("background:"+(active?color+"33":"transparent")+";color:"+(active?color:color+"88")+";border:1px solid "+(active?color:color+"33")+";border-radius:5px;padding:"+(sm?"3px 8px":"5px 11px")+";font-size:"+(sm?"11px":"12px")+";font-weight:"+(active?"700":"400")+";cursor:pointer;",lbl,fn);
+}
+function mkTag(text,color,sm){
+  return s("display:inline-block;background:"+color+"22;border:1px solid "+color+"44;color:"+color+";border-radius:3px;padding:"+(sm?"1px 4px":"2px 6px")+";font-size:"+(sm?"10px":"11px")+";margin:1px;",text);
+}
+function card(){return d("background:#0e0e1a;border:1px solid #222235;border-radius:10px;padding:10px 12px;margin-bottom:8px;");}
+function sec(txt){return s("font-size:9px;color:"+GRN+";letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;font-weight:700;display:block;",txt);}
+function row(){return d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;");}
+function showNumpad(label,curVal,onDone){
+  var v=String(curVal||"");
+  var ov=d("position:fixed;top:0;left:0;right:0;bottom:0;background:#000a;z-index:200;display:flex;align-items:flex-end;");
+  var pad=d("background:#0a0a18;border-top:2px solid #00ff9944;width:100%;padding:10px 12px 24px;");
+  var top=d("display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;");
+  ap(top,[s("color:"+MUT+";font-size:11px;",label)]);
+  var disp=s("color:"+GRN+";font-size:22px;font-weight:700;min-width:60px;text-align:right;",v||"-");
+  top.appendChild(disp);pad.appendChild(top);
+  var grid=d("display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;");
+  ["7","8","9","4","5","6","1","2","3","C","0","BS"].forEach(function(k){
+    var sp=k==="BS"||k==="C";
+    grid.appendChild(b("background:"+(sp?"#1a1a2a":"#111122")+";color:"+(k==="BS"?"#ff6666":k==="C"?"#ff9944":GRN)+";border:1px solid "+(sp?"#333":"#1e1e3a")+";border-radius:8px;padding:14px 0;font-size:18px;font-weight:700;",k,function(){
+      if(k==="BS")v=v.slice(0,-1);else if(k==="C")v="";else if(v.length<4)v+=k;
+      disp.textContent=v||"-";
+    }));
+  });
+  pad.appendChild(grid);
+  var bb=d("display:grid;grid-template-columns:1fr 1fr;gap:8px;");
+  bb.appendChild(b("background:transparent;color:#556;border:1px solid #333;border-radius:8px;padding:12px;font-size:14px;","キャンセル",function(){ov.remove();}));
+  bb.appendChild(b("background:"+GRN+";color:"+BG+";border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;","確定",function(){onDone(v?parseInt(v):null);ov.remove();render();}));
+  pad.appendChild(bb);ov.appendChild(pad);
+  ov.addEventListener("click",function(e){if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+function gBtn(val,ph,lbl,fn){
+  return b("background:#16162a;border:1px solid "+(val?"#444":"#222235")+";border-radius:7px;color:"+(val?GRN:"#445")+";padding:8px 12px;font-size:"+(val?"16px":"13px")+";font-weight:"+(val?"700":"400")+";text-align:left;width:100%;display:block;",val?val+"G":(ph||"G数入力"),function(){showNumpad(lbl||"G数",val,function(v){fn(v);});});
+}
+function showConfirm(msg,onOk){
+  var ov=d("position:fixed;top:0;left:0;right:0;bottom:0;background:#000a;z-index:300;display:flex;align-items:center;justify-content:center;");
+  var box=d("background:#0e0e1a;border:1px solid #444;border-radius:12px;padding:20px 16px;margin:0 20px;max-width:320px;width:100%;");
+  box.appendChild(d("color:#dde;font-size:14px;margin-bottom:16px;line-height:1.6;",msg));
+  var bb=d("display:grid;grid-template-columns:1fr 1fr;gap:8px;");
+  bb.appendChild(b("background:transparent;color:#aaa;border:1px solid #444;border-radius:8px;padding:11px;font-size:14px;","キャンセル",function(){ov.remove();}));
+  bb.appendChild(b("background:#dc3545;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;","リセット",function(){ov.remove();onOk();}));
+  box.appendChild(bb);ov.appendChild(box);document.body.appendChild(ov);
+}
+function mkSec(id,lbl,color,badge,buildFn){
+  var open=S.openSec===id;
+  var hdr=b("background:"+(open?color+"18":"transparent")+";color:"+(open?color:color+"66")+";border:1px solid "+(open?color+"44":"#222")+";border-radius:"+(open?"7px 7px 0 0":"7px")+";padding:7px 12px;font-size:12px;font-weight:700;width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-bottom:"+(open?"0":"2px")+";",null,function(){S.openSec=S.openSec===id?null:id;render();});
+  hdr.appendChild(s("",(open?"v ":">> ")+lbl));
+  if(badge)hdr.appendChild(s("font-size:10px;opacity:0.7;",badge));
+  var wrap=d("margin-bottom:6px;");wrap.appendChild(hdr);
+  if(open){var body=d("background:#16162a;border:1px solid #222;border-top:none;border-radius:0 0 7px 7px;padding:10px 10px 8px;");buildFn(body);wrap.appendChild(body);}
+  return wrap;
+}
+function buildReport(){
+  var lines=["スマスロ攻殻機動隊 実戦まとめ","総G数:"+S.totalG+"G / 差枚:"+S.totalMai+"枚",""];
+  S.ats.forEach(function(a){
+    var prev=S.ats[a.n-2];
+    lines.push("AT"+a.n+(prev&&prev.tachi?" 看板:"+prev.tachi:""));
+    a.cycles.forEach(function(c,ci){
+      var cn=CYC[ci]||String(ci+1);
+      lines.push(cn+c.naibu+(c.conf.length?" 確:"+c.conf.join(""):"")+(c.deny.length?" 否:"+c.deny.join(""):"")+(c.tachi?" 看板"+c.tachi:""));
+      var kp=[];KZ.forEach(function(g){var k=c.kirei[g];if(k.col||k.hat!==null)kp.push(g+(k.col||"")+(k.hat===true?"〇":k.hat===false?"-":""));});
+      if(kp.length)lines.push(" ["+kp.join(" ")+"]");
+      c.sen.forEach(function(s){lines.push(" ("+s.g+"G"+(s.tr==="ポイント"?"P":"")+(s.tbl?" "+s.tbl:"")+(s.col||"")+(s.ok===true?"〇":s.ok===false?"x":"?")+(s.memo?" "+s.memo:"")+")");});
+      if(c.cz){var cz=c.cz;lines.push(" "+cz.g+"G CZ["+cz.type+"] "+(cz.lv||"?")+(cz.rare!=="なし"?" "+cz.rare:"")+(cz.ok===true?"〇":cz.ok===false?"x":"?")+(cz.fuk===true?" 復活〇":cz.fuk===false?" 復活x":"")+(cz.sam?" 画面"+cz.sam:""));}
+    });
+    lines.push(" -> "+(a.mai?a.mai+"枚":"")+(a.bmai?" (+"+a.bmai+")":"")+(a.ichi?" "+a.ichi+(a.frame!=="なし"?" "+a.frame:""):"")+(a.sam?" 画面"+a.sam:"")+(a.trophy!=="なし"?" "+a.trophy:"")+(a.hakky?" 白Lv"+a.hakky:"")+(a.tachi?" "+a.tachi:""));
+    if(a.note)lines.push(" "+a.note);lines.push("");
+  });
+  return lines.join("\n");
+}
+function render(){var root=document.getElementById("root");root.innerHTML="";if(S.scr==="home")rHome(root);else if(S.scr==="record")rRecord(root);else if(S.scr==="summary")rSummary(root);}
+function rHome(root){
+  var hdr=d("background:#0e0e1a;border-bottom:1px solid #00ff9922;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;");
+  ap(hdr,[s("color:"+GRN+";font-size:12px;font-weight:700;letter-spacing:3px;","攻殻機動隊 実戦メモ"),mkTag(S.ats.length+"AT",GRN,true)]);
+  root.appendChild(hdr);
+  var wrap=d("padding:10px 12px;");
+  var sc=card();sc.appendChild(sec("セッション"));
+  var st=d("display:flex;gap:8px;margin-bottom:10px;");
+  var senC=S.ats.reduce(function(a,r){return a+r.cycles.reduce(function(b,c){return b+c.sen.length;},0);},0);
+  [{v:S.ats.length,l:"AT",c:GRN},{v:senC,l:"殲滅",c:"#ffc107"},{v:S.ats.filter(function(r){return r.trophy!=="なし";}).length,l:"トロフィー",c:"#a855f7"}].forEach(function(x){
+    var box=d("flex:1;text-align:center;");ap(box,[d("font-size:24px;font-weight:700;color:"+x.c+";",String(x.v)),d("font-size:9px;color:"+MUT+";",x.l)]);st.appendChild(box);
+  });
+  sc.appendChild(st);
+  var gr=d("display:flex;gap:6px;");
+  [{v:S.totalG,p:"総G数",k:"totalG"},{v:S.totalMai,p:"総差枚",k:"totalMai"}].forEach(function(x){
+    var box=d("flex:1;");box.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;",x.p));
+    var gb=gBtn(x.v?parseInt(x.v):null,x.p,x.p,function(val){S[x.k]=val?String(val):"";save();});box.appendChild(gb);gr.appendChild(box);
+  });
+  sc.appendChild(gr);wrap.appendChild(sc);
+  S.ats.forEach(function(a,i){
+    var prev=S.ats[i-1],it=prev?prev.tachi:null;
+    var ii=find(ICHI,"k",a.ichi),ti=find(TROPH,"k",a.trophy);
+    var c=card();c.style.borderColor=S.curAT===i?GRN+"44":"#222235";c.style.cursor="pointer";
+    c.addEventListener("click",function(){S.curAT=i;S.curCyc=a.cycles.length-1;S.scr="record";S.openSec=null;S.openSen=null;render();});
+    var top=d("display:flex;align-items:center;gap:6px;margin-bottom:4px;");
+    top.appendChild(s("color:"+GRN+";font-weight:700;font-size:14px;","AT"+a.n));
+    if(it)top.appendChild(mkTag("看板:"+it,"#0dcaf0",true));
+    if(a.mai)top.appendChild(s("color:#0dcaf0;font-weight:700;margin-left:auto;",a.mai+"枚"+(a.bmai?" (+"+a.bmai+")":"")));
+    if(a.trophy!=="なし"&&ti)top.appendChild(mkTag(a.trophy,ti.c,true));
+    c.appendChild(top);
+    var cd=d("font-size:10px;color:#556;line-height:1.9;");
+    a.cycles.forEach(function(cy,ci){
+      var czOk=cy.cz?cy.cz.ok:null;
+      var r=d("padding-left:4px;border-left:2px solid "+(czOk===true?"#00ff9944":czOk===false?"#ff444433":"#333")+";");
+      var txt=(CYC[ci]||ci+1)+" "+cy.naibu;
+      if(cy.tachi)txt+=" ["+cy.tachi+"]";
+      cy.conf.forEach(function(m){txt+=" 確"+m;});
+      cy.sen.forEach(function(sv){txt+=" "+sv.g+"G"+(sv.ok===true?"〇":sv.ok===false?"x":"");});
+      if(cy.cz)txt+=" CZ"+(cy.cz.ok===true?"〇":cy.cz.ok===false?"x":"");
+      r.textContent=txt;cd.appendChild(r);
+    });
+    c.appendChild(cd);
+    if(a.ichi&&ii){var id2=d("margin-top:4px;");id2.appendChild(mkTag(a.ichi,ii.c,true));c.appendChild(id2);}
+    wrap.appendChild(c);
+  });
+  wrap.appendChild(b("background:"+GRN+";color:"+BG+";border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;width:100%;margin-bottom:6px;","+ 新しいATを開始",function(){
+    S.ats.push(newAT(S.ats.length+1));S.curAT=S.ats.length-1;S.curCyc=0;S.scr="record";S.openSec=null;S.openSen=null;save();render();
+  }));
+  wrap.appendChild(b("background:transparent;color:#aaa;border:1px solid #333;border-radius:9px;padding:12px;font-size:14px;font-weight:700;width:100%;margin-bottom:6px;","設定判別サマリー",function(){S.scr="summary";render();}));
+  wrap.appendChild(b("background:transparent;color:#dc3545;border:1px solid #dc354533;border-radius:9px;padding:12px;font-size:14px;font-weight:700;width:100%;margin-bottom:6px;","リセット",function(){
+    showConfirm("全データをリセットしますか？",function(){S.ats=[];S.totalG="";S.totalMai="";try{localStorage.removeItem(SK);}catch(e){}render();});
+  }));
+  var kp=card();kp.style.marginTop="8px";kp.appendChild(sec("一枚絵カンペ"));
+  ICHI.filter(function(e){return e.c!=="#555";}).forEach(function(e){
+    var r=d("display:flex;align-items:center;gap:6px;margin-bottom:4px;");ap(r,[mkTag(e.k,e.c,true),s("font-size:11px;color:#aaa;"," -> "+e.h)]);kp.appendChild(r);
+  });
+  var td=d("margin-top:6px;border-top:1px solid #222235;padding-top:6px;");
+  td.appendChild(s("font-size:9px;color:"+GRN+";letter-spacing:2px;margin-bottom:4px;display:block;","タチコマ看板"));
+  TACHI.forEach(function(t){var r=d("display:flex;align-items:center;gap:6px;margin-bottom:3px;");ap(r,[s("font-size:13px;font-weight:700;color:#0dcaf0;","["+t.k+"]"),s("font-size:11px;color:#aaa;"," -> "+t.h)]);td.appendChild(r);});
+  kp.appendChild(td);wrap.appendChild(kp);root.appendChild(wrap);
+}
+function rRecord(root){
+  var at=getAT(),cyc=getCyc();if(!at||!cyc)return;
+  var prev=S.ats[S.curAT-1],it=prev?prev.tachi:null;
+  var hdr=d("background:#0e0e1a;border-bottom:1px solid #00ff9922;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;");
+  ap(hdr,[b("background:none;border:none;color:"+GRN+";font-size:18px;padding:0 4px;","<-",function(){S.scr="home";render();}),s("color:"+GRN+";font-weight:700;font-size:13px;","AT"+at.n+" "+(CYC[S.curCyc]||"")),s("","")]);
+  root.appendChild(hdr);
+  var wrap=d("padding:8px 10px;");
+  if(it&&S.curCyc===0){
+    var ib=d("background:#0a0a20;border:1px solid #0dcaf044;border-radius:10px;padding:10px 12px;margin-bottom:8px;");
+    var th=find(TACHI,"k",it);
+    ap(ib,[s("font-size:10px;color:#0dcaf0;","前AT看板（次AT示唆）: "),s("font-size:14px;font-weight:700;color:#0dcaf0;","["+it+"] "),s("font-size:11px;color:#aaa;",th?th.h:"")]);
+    wrap.appendChild(ib);
+  }
+  if(at.cycles.length>1){
+    var tabs=d("display:flex;gap:4px;margin-bottom:8px;overflow-x:auto;");
+    at.cycles.forEach(function(_,ci){
+      var cz=at.cycles[ci].cz,active=S.curCyc===ci;
+      tabs.appendChild(b("background:"+(active?GRN+"22":"transparent")+";color:"+(active?GRN:"#445")+";border:1px solid "+(active?GRN+"55":"#333")+";border-radius:5px;padding:4px 10px;font-size:11px;white-space:nowrap;",
+        (CYC[ci]||ci+1)+(cz?cz.ok===true?" OK":cz.ok===false?" NG":"":""),function(){S.curCyc=ci;S.openSec=null;S.openSen=null;render();}));
+    });wrap.appendChild(tabs);
+  }
+  var ns=card();ns.appendChild(sec("内部状態"));
+  var nr=row();
+  ["通常","高確","超高確"].forEach(function(sv){nr.appendChild(mkBtn(sv,cyc.naibu===sv,sv==="超高確"?"#fd7e14":sv==="高確"?"#0dcaf0":GRN,function(){updCyc(function(c){return oa(c,{naibu:sv});});render();}));});
+  ns.appendChild(nr);
+  var tar=d("display:flex;align-items:center;gap:6px;margin-top:4px;padding-top:6px;border-top:1px solid #222235;");
+  tar.appendChild(s("font-size:10px;color:"+MUT+";min-width:70px;","タチコマ看板"));
+  var taBtns=d("display:flex;gap:4px;");
+  TACHI.forEach(function(t){
+    var active=cyc.tachi===t.k;
+    taBtns.appendChild(b("background:"+(active?"#ffffff22":"transparent")+";border:1px solid "+(active?"#888":"#333")+";border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;color:"+(active?"#0dcaf0":"#445")+";","["+t.k+"]",function(){updCyc(function(c){return oa(c,{tachi:c.tachi===t.k?null:t.k});});render();}));
+  });
+  tar.appendChild(taBtns);
+  if(cyc.tachi){var th2=find(TACHI,"k",cyc.tachi);if(th2)tar.appendChild(s("font-size:10px;color:#aaa;margin-left:4px;",th2.h));}
+  ns.appendChild(tar);wrap.appendChild(ns);
+  var ms=card();ms.appendChild(sec("殲滅モード（タップ: 未->確定->否定->未）"));
+  var mr=row();
+  ["A","B","C","D"].forEach(function(m){
+    var info=MI[m],st=modeState(m);
+    var mb=b("background:"+(st==="on"?"#ffffff11":"transparent")+";color:"+(st==="on"?info.c:st==="deny"?"#2a2a2a":info.c+"77")+";border:1px solid "+(st==="deny"?"#1a1a1a":info.c+(st==="on"?"":"44"))+";border-radius:6px;padding:5px 9px;font-size:11px;text-decoration:"+(st==="deny"?"line-through":"none")+";",null,function(){cycleMode(m);render();});
+    var b1=document.createElement("b");b1.textContent="モード"+m;mb.appendChild(b1);
+    var sp2=document.createElement("span");sp2.style.display="block";sp2.style.fontSize="9px";sp2.style.opacity="0.7";sp2.textContent=info.d;mb.appendChild(sp2);
+    mr.appendChild(mb);
+  });
+  ms.appendChild(mr);
+  if(cyc.conf.length){var cd=d("font-size:11px;margin-top:3px;");cyc.conf.forEach(function(m){cd.appendChild(s("margin-right:8px;color:"+MI[m].c+";","モード"+m+": 天井"+MI[m].ceil+"G"));});ms.appendChild(cd);}
+  if(cyc.deny.length)ms.appendChild(d("font-size:10px;color:"+MUT+";margin-top:2px;","否定:"+cyc.deny.join("/")+" 残:"+["A","B","C","D"].filter(function(m){return cyc.deny.indexOf(m)<0;}).join("/")));
+  wrap.appendChild(ms);
+  var kCnt=KZ.filter(function(g){return cyc.kirei[g].col||cyc.kirei[g].hat!==null;}).length;
+  wrap.appendChild(mkSec("kirei","規定ゾーン","#4da8ff",kCnt+"件",function(body){
+    body.appendChild(d("font-size:10px;color:"+MUT+";margin-bottom:6px;","色=期待度/モード示唆  〇=殲滅発展  -=発展なし"));
+    KZ.forEach(function(g){
+      var k=cyc.kirei[g];
+      var r=d("display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #1a1a2a;opacity:"+(k.col||k.hat!==null?"1":"0.45")+";");
+      r.appendChild(s("color:#4da8ff;font-weight:700;min-width:34px;font-size:12px;",g+"G"));
+      var cols=d("display:flex;gap:3px;flex:1;flex-wrap:wrap;");
+      ZCOLS.forEach(function(c){
+        cols.appendChild(b("background:"+(k.col===c?"#ffffff22":"transparent")+";border:1px solid "+(k.col===c?"#888":"#2a2a3a")+";border-radius:4px;padding:2px 4px;font-size:12px;",c,function(){
+          updCyc(function(cc){var kk=oa(cc.kirei);kk[g]=oa(kk[g],{col:kk[g].col===c?null:c});return oa(cc,{kirei:kk});});render();
+        }));
+      });
+      r.appendChild(cols);
+      var ob=d("display:flex;gap:3px;");
+      ob.appendChild(b("background:"+(k.hat===true?"#00ff9922":"transparent")+";color:"+(k.hat===true?GRN:"#445")+";border:1px solid "+(k.hat===true?GRN+"44":"#333")+";border-radius:4px;padding:2px 8px;font-size:12px;","〇",function(){updCyc(function(cc){var kk=oa(cc.kirei);kk[g]=oa(kk[g],{hat:kk[g].hat===true?null:true});return oa(cc,{kirei:kk});});render();}));
+      ob.appendChild(b("background:"+(k.hat===false?"#ff444422":"transparent")+";color:"+(k.hat===false?"#ff4444":"#445")+";border:1px solid "+(k.hat===false?"#ff444444":"#333")+";border-radius:4px;padding:2px 8px;font-size:12px;","-",function(){updCyc(function(cc){var kk=oa(cc.kirei);kk[g]=oa(kk[g],{hat:kk[g].hat===false?null:false});return oa(cc,{kirei:kk});});render();}));
+      r.appendChild(ob);body.appendChild(r);
+    });
+  }));
+  var sw=d("margin-bottom:6px;");
+  sw.appendChild(mkSec("sen_add","殲滅ゾーン追加",GRN,"",function(body){
+    var tr=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+    tr.appendChild(s("font-size:11px;color:"+MUT+";align-self:center;","契機:"));
+    tr.appendChild(mkBtn("規定G",S.senTr==="規定G",GRN,function(){S.senTr="規定G";render();},true));
+    tr.appendChild(mkBtn("ポイント",S.senTr==="ポイント","#fd7e14",function(){S.senTr="ポイント";render();},true));
+    body.appendChild(tr);
+    var gr=d("display:flex;gap:6px;margin-bottom:4px;");
+    var gb=gBtn(S.senG,"発生G数","殲滅ゾーン G数",function(v){S.senG=v;});gb.style.flex="1";gr.appendChild(gb);
+    gr.appendChild(b("background:"+GRN+";color:"+BG+";border:none;border-radius:7px;padding:8px 14px;font-size:16px;font-weight:700;","+",function(){
+      if(!S.senG)return;var g=S.senG,tr2=S.senTr,ni=0;
+      updCyc(function(c){ni=c.sen.length;return oa(c,{sen:c.sen.concat([newSen(g,tr2)])});});
+      S.senG=null;S.openSec=null;S.openSen=ni;render();
+    }));body.appendChild(gr);
+    if(S.senG){
+      var zone=Math.floor(S.senG/50)*50,row2=ZT[zone];
+      if(row2){
+        var active=["A","B","C","D"].filter(function(m){return cyc.deny.indexOf(m)<0;});
+        var show=cyc.conf.length>0?cyc.conf.filter(function(m){return active.indexOf(m)>=0;}):active;
+        if(show.length){
+          var rates=show.map(function(m){return{m:m,v:row2[m]||"-"};});
+          var ceil=rates.some(function(r){return r.v==="天井";});
+          var hint=d("background:"+(ceil?"#dc354518":"#ffffff08")+";border:1px solid "+(ceil?"#dc354566":"#333")+";border-radius:7px;padding:5px 9px;margin-top:3px;font-size:11px;");
+          hint.appendChild(s("color:"+MUT+";",zone+"G: "));
+          rates.forEach(function(r){hint.appendChild(s("margin-right:6px;color:"+MI[r.m].c+";","モード"+r.m+" "+r.v));});
+          if(ceil)hint.appendChild(s("color:#ff6b6b;font-weight:700;"," CZ濃厚！"));
+          body.appendChild(hint);
+        }
+      }
+    }
+  }));
+  cyc.sen.forEach(function(sv,si){
+    var isOpen=S.openSen===si;
+    var shdr=b("background:"+(isOpen?"#00ff9911":"#0a0a18")+";color:"+GRN+";border:1px solid "+(sv.ok===true?"#00ff9944":sv.ok===false?"#ff444433":"#1a2a1a")+";border-radius:"+(isOpen?"7px 7px 0 0":"7px")+";padding:7px 10px;font-size:12px;width:100%;text-align:left;display:flex;align-items:center;gap:8px;margin-bottom:"+(isOpen?"0":"4px")+";",null,function(){S.openSen=isOpen?null:si;render();});
+    ap(shdr,[s("font-weight:700;font-size:14px;color:"+GRN+";",sv.g+"G"),mkTag(sv.tr,sv.tr==="ポイント"?"#fd7e14":"#445",true)]);
+    if(sv.tbl)shdr.appendChild(mkTag("T"+sv.tbl,"#557",true));
+    if(sv.col)shdr.appendChild(s("font-size:13px;",sv.col));
+    if(sv.ok===true)shdr.appendChild(s("color:#00ff99;font-weight:700;","〇"));
+    if(sv.ok===false)shdr.appendChild(s("color:#ff4444;font-weight:700;","x"));
+    shdr.appendChild(s("margin-left:auto;color:#445;font-size:11px;",isOpen?"v":">>"));
+    sw.appendChild(shdr);
+    if(isOpen){
+      var sb=d("background:#0a0a18;border:1px solid #1a2a1a;border-top:none;border-radius:0 0 7px 7px;padding:8px 10px;margin-bottom:4px;");
+      sb.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","テーブル"));
+      var tr3=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+      TBL.forEach(function(t){tr3.appendChild(mkBtn(t,sv.tbl===t,"#667",function(){updSen(si,"tbl",sv.tbl===t?null:t);render();},true));});sb.appendChild(tr3);
+      sb.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","発展色"));
+      var cr=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+      SCOLS.forEach(function(c){cr.appendChild(b("background:"+(sv.col===c?"#ffffff22":"transparent")+";border:1px solid "+(sv.col===c?"#888":"#333")+";border-radius:4px;padding:3px 6px;font-size:13px;",c,function(){updSen(si,"col",sv.col===c?null:c);render();}));});sb.appendChild(cr);
+      var or=d("display:flex;gap:4px;margin-bottom:6px;");
+      or.appendChild(mkBtn("〇 成功",sv.ok===true,"#00ff99",function(){updSen(si,"ok",sv.ok===true?null:true);render();},true));
+      or.appendChild(mkBtn("x 失敗",sv.ok===false,"#ff4444",function(){updSen(si,"ok",sv.ok===false?null:false);render();},true));
+      sb.appendChild(or);
+      sb.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","前兆メモ"));
+      var mi=document.createElement("input");
+      mi.setAttribute("style","background:#070710;border:1px solid #333;border-radius:6px;color:#bbb;padding:5px 8px;font-size:12px;width:100%;");
+      mi.placeholder="前兆の演出メモ";mi.value=sv.memo||"";
+      mi.addEventListener("input",function(e){updSen(si,"memo",e.target.value);});sb.appendChild(mi);
+      sb.appendChild(b("background:transparent;color:#ff4444;border:1px solid #ff444433;border-radius:5px;padding:4px 12px;font-size:12px;margin-top:6px;","削除",function(){
+        updCyc(function(c){return oa(c,{sen:c.sen.filter(function(_,i){return i!==si;})});});if(S.openSen===si)S.openSen=null;render();
+      }));sw.appendChild(sb);
+    }
+  });wrap.appendChild(sw);
+  var hasCZ=!!cyc.cz;
+  wrap.appendChild(mkSec("cz","CZ"+(hasCZ?" ["+cyc.cz.type+" "+cyc.cz.g+"G]":""),"#fbbf24",hasCZ?(cyc.cz.ok===true?"成功":cyc.cz.ok===false?"失敗":"記録中"):"",function(body){
+    if(!hasCZ){
+      body.appendChild(d("font-size:10px;color:"+MUT+";margin-bottom:6px;","殲滅ゾーン成功後に記録"));
+      var gb2=gBtn(S.czG,"CZ突入G数","CZ突入 G数",function(v){S.czG=v;});gb2.style.marginBottom="6px";body.appendChild(gb2);
+      var cr2=d("display:flex;gap:6px;");
+      cr2.appendChild(b("flex:1;background:#fbbf2422;color:#fbbf24;border:1px solid #fbbf2444;border-radius:7px;padding:10px;font-size:12px;font-weight:700;","SAM CZ",function(){if(!S.czG)return;updCyc(function(c){return oa(c,{cz:newCZ(S.czG,"SAM")});});S.czG=null;render();}));
+      cr2.appendChild(b("flex:1;background:#0dcaf022;color:#0dcaf0;border:1px solid #0dcaf044;border-radius:7px;padding:10px;font-size:12px;font-weight:700;","タチコマCZ",function(){if(!S.czG)return;updCyc(function(c){return oa(c,{cz:newCZ(S.czG,"タチコマ")});});S.czG=null;render();}));
+      body.appendChild(cr2);
+    } else {
+      var cz=cyc.cz;
+      var top2=d("display:flex;align-items:center;gap:6px;margin-bottom:8px;");
+      ap(top2,[mkTag(cz.type,cz.type==="タチコマ"?"#0dcaf0":"#fbbf24",false),s("color:#fbbf24;font-weight:700;",cz.g+"G"),b("margin-left:auto;background:none;border:1px solid #333;color:#556;border-radius:4px;padding:2px 8px;font-size:11px;","削除",function(){updCyc(function(c){return oa(c,{cz:null});});render();})]);
+      body.appendChild(top2);
+      body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","最終レベル色"));
+      var lr=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+      CZLV.forEach(function(c){lr.appendChild(b("background:"+(cz.lv===c?"#ffffff22":"transparent")+";border:1px solid "+(cz.lv===c?"#888":"#333")+";border-radius:4px;padding:4px 10px;font-size:14px;",c,function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{lv:cc.cz.lv===c?null:c})});});render();}));});
+      body.appendChild(lr);
+      body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","レア役"));
+      var rr=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+      RARE.forEach(function(r){rr.appendChild(mkBtn(r,cz.rare===r,r==="なし"?"#445":"#fd7e14",function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{rare:r})});});render();},true));});body.appendChild(rr);
+      var okr=d("display:flex;gap:4px;margin-bottom:6px;");
+      okr.appendChild(mkBtn("〇 成功->AT",cz.ok===true,"#00ff99",function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{ok:cc.cz.ok===true?null:true})});});render();}));
+      okr.appendChild(mkBtn("x 失敗",cz.ok===false,"#ff4444",function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{ok:cc.cz.ok===false?null:false})});});render();}));
+      body.appendChild(okr);
+      if(cz.ok===false){
+        body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","復活ハック"));
+        var fr=d("display:flex;gap:4px;margin-bottom:6px;");
+        fr.appendChild(mkBtn("〇 復活->AT",cz.fuk===true,"#00ff99",function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{fuk:cc.cz.fuk===true?null:true})});});render();},true));
+        fr.appendChild(mkBtn("x なし",cz.fuk===false,"#ff4444",function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{fuk:cc.cz.fuk===false?null:false})});});render();},true));
+        body.appendChild(fr);
+        body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","SAM終了画面"));
+        var sr=d("display:flex;gap:4px;flex-wrap:wrap;");
+        SAM.forEach(function(sv2){sr.appendChild(mkBtn(sv2.k,cz.sam===sv2.k,"#667",function(){updCyc(function(cc){return oa(cc,{cz:oa(cc.cz,{sam:cc.cz.sam===sv2.k?null:sv2.k})});});render();},true));});body.appendChild(sr);
+        if(cz.sam){var sf=find(SAM,"k",cz.sam);if(sf)body.appendChild(d("font-size:10px;color:#aaa;margin-top:2px;"," -> "+sf.h));}
+      }
+    }
+  }));
+  wrap.appendChild(mkSec("atresult","AT結果","#a855f7","",function(body){
+    var mr2=d("display:flex;gap:6px;margin-bottom:8px;");
+    var mb1=d("flex:1;");mb1.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","獲得枚数"));mb1.appendChild(gBtn(at.mai,"枚数","獲得枚数",function(v){updAT(function(a){return oa(a,{mai:v});});}));mr2.appendChild(mb1);
+    var mb2=d("flex:1;");mb2.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","ボーナス(リブート等)"));mb2.appendChild(gBtn(at.bmai,"ボーナス","ボーナス枚数",function(v){updAT(function(a){return oa(a,{bmai:v});});}));mr2.appendChild(mb2);
+    body.appendChild(mr2);
+    body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:3px;display:block;","一枚絵（AT終了/CZ失敗PUSH/裏コマンド）"));
+    var ig=d("display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px;");
+    ICHI.forEach(function(e){
+      var active=at.ichi===e.k;
+      var ib2=b("background:"+(active?e.c+"22":"transparent")+";border:1px solid "+(active?e.c:"#222")+";border-radius:6px;padding:5px 7px;text-align:left;width:100%;",null,function(){updAT(function(a){return oa(a,{ichi:a.ichi===e.k?null:e.k});});render();});
+      var d1=document.createElement("div");d1.style.color=active?e.c:"#778";d1.style.fontWeight="700";d1.style.fontSize="11px";d1.textContent=e.k;ib2.appendChild(d1);
+      var d2=document.createElement("div");d2.style.color="#445";d2.style.fontSize="9px";d2.textContent=e.h;ib2.appendChild(d2);
+      ig.appendChild(ib2);
+    });body.appendChild(ig);
+    if(at.ichi){
+      var fr2=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+      fr2.appendChild(s("font-size:10px;color:"+MUT+";align-self:center;","枠色:"));
+      FRAMES.forEach(function(f){fr2.appendChild(mkBtn(f.k,at.frame===f.k,f.c,function(){updAT(function(a){return oa(a,{frame:f.k});});render();},true));});body.appendChild(fr2);
+    }
+    body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","SAM終了画面（AT中）"));
+    var sr2=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+    SAM.forEach(function(sv2){sr2.appendChild(mkBtn(sv2.k,at.sam===sv2.k,"#667",function(){updAT(function(a){return oa(a,{sam:a.sam===sv2.k?null:sv2.k});});render();},true));});body.appendChild(sr2);
+    body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","トロフィー"));
+    var tr4=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+    TROPH.forEach(function(t){tr4.appendChild(mkBtn(t.l,at.trophy===t.k,t.c,function(){updAT(function(a){return oa(a,{trophy:t.k});});render();},true));});body.appendChild(tr4);
+    body.appendChild(s("font-size:10px;color:"+MUT+";margin-bottom:2px;display:block;","白の境界 Lv"));
+    var hr=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;");
+    ["1","2","3"].forEach(function(lv){hr.appendChild(mkBtn("Lv"+lv,at.hakky===lv,"#0dcaf0",function(){updAT(function(a){return oa(a,{hakky:a.hakky===lv?null:lv});});render();},true));});body.appendChild(hr);
+    var td2=d("border-top:1px solid #222235;padding-top:8px;margin-top:4px;");
+    td2.appendChild(s("font-size:10px;color:#fbbf24;margin-bottom:4px;display:block;","AT終了後 タチコマ看板色（次ATへの示唆）"));
+    var tbr=d("display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;");
+    TACHI.forEach(function(t){
+      var active=at.tachi===t.k;
+      tbr.appendChild(b("background:"+(active?"#ffffff22":"transparent")+";border:1px solid "+(active?"#fbbf24":"#333")+";border-radius:5px;padding:4px 12px;font-size:12px;font-weight:700;color:"+(active?"#fbbf24":"#445")+";","["+t.k+"]",function(){updAT(function(a){return oa(a,{tachi:a.tachi===t.k?null:t.k});});render();}));
+    });
+    td2.appendChild(tbr);
+    if(at.tachi){var th3=find(TACHI,"k",at.tachi);if(th3)td2.appendChild(d("font-size:10px;color:#fbbf24;",th3.h));}
+    body.appendChild(td2);
+    var ta=document.createElement("textarea");
+    ta.setAttribute("style","background:#070710;border:1px solid #333;border-radius:6px;color:#bbb;padding:6px 8px;font-size:12px;width:100%;min-height:50px;resize:vertical;margin-top:8px;");
+    ta.placeholder="s9m / 白の境界詳細 / その他";ta.value=at.note||"";
+    ta.addEventListener("input",function(e){updAT(function(a){return oa(a,{note:e.target.value});});});body.appendChild(ta);
+  }));
+  var br=d("display:flex;gap:6px;margin-top:8px;");
+  br.appendChild(b("flex:1;background:transparent;color:#ff6666;border:1px solid #dc354544;border-radius:9px;padding:12px;font-size:14px;font-weight:700;","CZ失敗->次周期",function(){
+    updCyc(function(c){return oa(c,{cz:c.cz?oa(c.cz,{ok:false}):c.cz});});
+    var a2=getAT();S.ats[S.curAT]=oa(a2,{cycles:a2.cycles.concat([newCyc()])});
+    S.curCyc++;S.senG=null;S.czG=null;S.openSec=null;S.openSen=null;save();render();
+  }));
+  br.appendChild(b("flex:1;background:transparent;color:#aaa;border:1px solid #333;border-radius:9px;padding:12px;font-size:14px;font-weight:700;","+ 次のAT",function(){
+    S.ats.push(newAT(S.ats.length+1));S.curAT=S.ats.length-1;S.curCyc=0;S.scr="record";S.openSec=null;S.openSen=null;save();render();
+  }));
+  wrap.appendChild(br);
+  wrap.appendChild(b("background:"+GRN+";color:"+BG+";border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;width:100%;margin-top:6px;","<- ホームへ",function(){S.scr="home";render();}));
+  root.appendChild(wrap);
+}
+function rSummary(root){
+  var ats=S.ats,imeC={},trC={},czOk=0,czNg=0,fukOk=0,fukNg=0;
+  ats.forEach(function(a){
+    if(a.ichi)imeC[a.ichi]=(imeC[a.ichi]||0)+1;
+    trC[a.trophy]=(trC[a.trophy]||0)+1;
+    a.cycles.forEach(function(c){if(c.cz){if(c.cz.ok===true)czOk++;if(c.cz.ok===false){czNg++;if(c.cz.fuk===true)fukOk++;if(c.cz.fuk===false)fukNg++;}}});
+  });
+  var hdr=d("background:#0e0e1a;border-bottom:1px solid #00ff9922;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;");
+  ap(hdr,[b("background:none;border:none;color:"+GRN+";font-size:18px;padding:0 4px;","<-",function(){S.scr="home";render();}),s("color:"+GRN+";font-weight:700;font-size:12px;letter-spacing:2px;","設定判別サマリー"),mkTag("AT"+ats.length,GRN,true)]);
+  root.appendChild(hdr);
+  var wrap=d("padding:10px 12px;");
+  var cs=card();cs.appendChild(sec("CZ成績"));
+  var czr=d("display:flex;gap:16px;font-size:18px;font-weight:700;margin-bottom:4px;");
+  ap(czr,[s("color:#00ff99;","OK "+czOk+"回"),s("color:#ff4444;","NG "+czNg+"回")]);
+  if((czOk+czNg)>0)czr.appendChild(s("color:"+MUT+";font-size:13px;font-weight:400;","成功率"+Math.round(czOk/(czOk+czNg)*100)+"%"));
+  cs.appendChild(czr);
+  if((fukOk+fukNg)>0)cs.appendChild(d("font-size:12px;color:#aaa;","復活: "+fukOk+"OK / "+fukNg+"NG ("+Math.round(fukOk/(fukOk+fukNg)*100)+"%)"));
+  wrap.appendChild(cs);
+  var ic=card();ic.appendChild(sec("一枚絵分布"));
+  if(!Object.keys(imeC).length)ic.appendChild(d("color:"+MUT+";font-size:11px;","記録なし"));
+  else Object.keys(imeC).forEach(function(k){
+    var cnt=imeC[k],info=find(ICHI,"k",k),c=info?info.c:"#888";
+    var r=d("display:flex;align-items:center;gap:8px;margin-bottom:5px;");
+    r.appendChild(s("min-width:78px;font-size:11px;color:"+c+";font-weight:700;",k));
+    var bar=d("flex:1;background:#1a1a2a;border-radius:3px;height:6px;");
+    bar.appendChild(d("background:"+c+";width:"+Math.round(cnt/ats.length*100)+"%;height:100%;border-radius:3px;"));
+    r.appendChild(bar);r.appendChild(s("color:#aaa;font-size:11px;min-width:36px;",cnt+"/"+ats.length));ic.appendChild(r);
+  });
+  wrap.appendChild(ic);
+  var tc=card();tc.appendChild(sec("トロフィー"));
+  var vt=Object.keys(trC).filter(function(k){return k!=="なし";});
+  if(!vt.length)tc.appendChild(d("color:"+MUT+";font-size:11px;","なし"));
+  else vt.forEach(function(k){var t=find(TROPH,"k",k);var dd=d("margin-bottom:4px;");dd.appendChild(mkTag((t?t.l:k)+" x"+trC[k],t?t.c:"#888",false));tc.appendChild(dd);});
+  wrap.appendChild(tc);
+  var sc2=card();sc2.appendChild(sec("設定推測"));
+  var hints=[];
+  if((trC["虹"]||0)>0)hints.push({c:"#0dcaf0",t:"虹 -> 設定6確定！"});
+  if((trC["キリン"]||0)>0)hints.push({c:"#fd7e14",t:"キリン -> 設定5以上確定"});
+  if((trC["金"]||0)>=2)hints.push({c:"#ffc107",t:"金x"+(trC["金"]||0)+" -> 設定4以上濃厚"});
+  if((imeC["アオイ"]||0)>0)hints.push({c:"#fbbf24",t:"アオイ"+(imeC["アオイ"]||0)+"回 -> モードD+設定4以上"});
+  if(!hints.length)hints.push({c:"#334",t:"サンプル不足。記録を続けましょう。"});
+  hints.forEach(function(x){sc2.appendChild(d("font-size:12px;color:"+x.c+";margin-bottom:5px;","* "+x.t));});
+  wrap.appendChild(sc2);
+  var rc=card();rc.appendChild(sec("実戦レポート"));
+  var pre=document.createElement("pre");
+  pre.setAttribute("style","background:#050508;border:1px solid #222235;border-radius:7px;padding:10px;font-size:10px;color:#0f0;white-space:pre-wrap;line-height:1.8;max-height:320px;overflow:auto;margin:0;");
+  pre.textContent=buildReport();rc.appendChild(pre);
+  var copyBtn=b("background:transparent;color:"+GRN+";border:1px solid #00ff9944;border-radius:7px;padding:8px 12px;font-size:12px;font-weight:700;width:100%;margin-top:6px;","レポートをコピー",function(){
+    var text=buildReport();
+    function fb(){var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,99999);try{document.execCommand("copy");copyBtn.textContent="コピーしました";setTimeout(function(){copyBtn.textContent="レポートをコピー";},1500);}catch(e){}document.body.removeChild(ta);}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){copyBtn.textContent="コピーしました";setTimeout(function(){copyBtn.textContent="レポートをコピー";},1500);}).catch(fb);else fb();
+  });
+  rc.appendChild(copyBtn);wrap.appendChild(rc);root.appendChild(wrap);
+}
+load();render();
 </script>
 </body>
 </html>
